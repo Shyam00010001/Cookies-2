@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import random
 import urllib.parse
 from datetime import datetime
 import telebot
@@ -9,7 +10,15 @@ import time
 from telebot import apihelper
 
 # ============================================
-# RAILWAY CONFIG - Environment Variable से Token लें
+# FLASK FOR RENDER WEB SERVICE
+# ============================================
+from flask import Flask
+import threading
+
+app = Flask(__name__)
+
+# ============================================
+# RENDER CONFIG - Environment Variable से Token लें
 # ============================================
 apihelper.READ_TIMEOUT = 60
 apihelper.CONNECT_TIMEOUT = 60
@@ -19,8 +28,33 @@ if not BOT_TOKEN:
     print("❌ TELEGRAM_TOKEN not found in environment variables!")
     exit(1)
 
-CHANNEL_ID = "-1003937881669"
+CHANNEL_ID = os.environ.get("CHANNEL_ID", "-1003937881669")
 WATERMARK = "github.com/harshitkamboj"
+
+# ============================================
+# SHAYARI LIST - 10 Beautiful Shayaris
+# ============================================
+SHAYARI_LIST = [
+    "💫 हर मोड़ पे मिलेंगे नए बहाने,\nज़िन्दगी के सफर में हैं अफसाने,\nहम तो चलते रहेंगे अपनी राह पर,\nतुम भी मुस्कुराकर दिखाओ ज़माने।",
+
+    "🌙 चाँद की चाँदनी जैसे खिलती है,\nहर शाम नई उम्मीद लेकर आती है,\nहमने तो हर दिन एक कहानी लिखी,\nतुम अपनी किस्मत खुद बनाती है।",
+
+    "💖 दिलों के मिलने की दास्तान है,\nहर पल में तेरी पहचान है,\nजो सच्चा हो उसे मंज़िल मिलती है,\nबस एक नज़र मोहब्बत का फ़रमान है।",
+
+    "✨ रातें भी हैं और सितारे भी,\nतेरी यादों के सहारे भी,\nहम तो बस एक सपना देखते हैं,\nजिसमें हो तेरी बातें हर बार भी।",
+
+    "🌺 जो समंदर से गहरी है,\nहर अदा में जादू भरी है,\nमोहब्बत का हर रंग नया है,\nहर एक शाम तुम्हारी कहानी है।",
+
+    "🎵 दिल की है ये सदा क्यों है,\nहर घड़ी तू क्यों है खास,\nहम तो बस एक दीवाने हैं,\nतेरी हर चीज़ से हो गए हैं हम भी भीगे।",
+
+    "🌅 हर सुबह एक नई मिसाल है,\nहर पल एक नया कल है,\nतेरे साथ हर दिन जश्न है,\nहर घड़ी तू ही मेरी तल्ख है।",
+
+    "💫 सितारों से आगे जो मंज़िल है,\nवहाँ तेरी ही तस्वीर महफ़िल है,\nहर नज़्म तेरे नाम लिखी है,\nहर दिन तुझसे ही तो खिली है।",
+
+    "🌙 चाँद सा चेहरा और बातें निराली,\nहर अदा में प्यार की है लाली,\nहम तो बस एक दर्द के आदी हैं,\nतेरी यादों में बीती हर सांस है।",
+
+    "💕 हर दिल में एक बात है,\nजो सिर्फ़ तुमसे वाकिफ़ है,\nमोहब्बत हमने भी है की,\nपर तुमसे बेहतर कोई ख़ास नहीं है।"
+]
 
 # ============================================
 # NETFLIX API
@@ -85,6 +119,17 @@ REQUIRED_COOKIE = "NetflixId"
 # BOT INITIALIZE
 # ============================================
 bot = telebot.TeleBot(BOT_TOKEN)
+
+# ============================================
+# FLASK ROUTES - Render Health Check के लिए
+# ============================================
+@app.route('/')
+def home():
+    return "🤖 Netflix NFT Bot is Running!"
+
+@app.route('/health')
+def health():
+    return "OK", 200
 
 # ============================================
 # COOKIE PARSING
@@ -215,6 +260,8 @@ def save_to_channel(cookie_text, nftoken_link, expires, user_id, username):
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
+    random_shayari = random.choice(SHAYARI_LIST)
+    
     text = (
         "😵 **NETFLIX NF TOKEN** 😵\n\n"
         "👑 **Owner:** ❤️ 𝐏𝐀𝐖𝐀𝐍 𝐒𝐀𝐈𝐍𝐈 ❤️\n\n"
@@ -222,10 +269,14 @@ def send_welcome(message):
         "📌 **Commands:**\n"
         "   🍪 Send Cookie → Get Token\n\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"✨ **आज की शायरी:** ✨\n\n"
+        f"{random_shayari}\n\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         "📱 **Contact:** @PawanSaini\n"
         "⚡ **Made with ❤️ by:** 𝐏𝐀𝐖𝐀𝐍 𝐒𝐀𝐈𝐍𝐈"
     )
     bot.reply_to(message, text, parse_mode='Markdown')
+
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     text = message.text
@@ -260,10 +311,10 @@ def handle_message(message):
         bot.reply_to(message, "🤔 Cookie nahi mili.\n\nCookie bhejo: NetflixId=xxx; SecureNetflixId=xxx")
 
 # ============================================
-# BOT RUN - Railway के लिए
+# BOT RUN FUNCTION (Thread में चलेगा)
 # ============================================
-if __name__ == "__main__":
-    print("🤖 Bot Starting on Railway...")
+def run_bot():
+    print("🤖 Bot Starting on Render...")
     print("📢 Channel ID: " + CHANNEL_ID)
     print("=" * 40)
     print(WATERMARK)
@@ -276,3 +327,16 @@ if __name__ == "__main__":
             print("⚠️ Error: " + str(e))
             print("🔄 Reconnecting in 10 seconds...")
             time.sleep(10)
+
+# ============================================
+# MAIN - Flask + Bot Thread
+# ============================================
+if __name__ == "__main__":
+    # बॉट को अलग Thread में चलाएँ
+    bot_thread = threading.Thread(target=run_bot)
+    bot_thread.start()
+    
+    # Render के लिए Flask Server चलाएँ
+    port = int(os.environ.get("PORT", 10000))
+    print(f"🌐 Flask Server running on port {port}")
+    app.run(host="0.0.0.0", port=port)
